@@ -31,3 +31,25 @@ def top_faults(codes: list[int], k: int) -> list[int]:
     """Return the k most frequent fault codes."""
     counts = Counter(codes)
     return heapq.nlargest(k, counts, key=counts.__getitem__)
+
+
+def merge_sessions(sessions: list[list[int]]) -> list[list[int]]:
+    """Merge overlapping or touching [start, end] sessions."""
+    merged: list[list[int]] = []
+    for start, end in sorted(sessions):
+        if merged and start <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], end)
+        else:
+            merged.append([start, end])
+    return merged
+
+
+def latest_state(events: list[tuple]) -> dict[str, str]:
+    """Return each tool's most recent state (later arrival wins on equal timestamps)."""
+    latest: dict[str, tuple[str, str]] = {}
+    for tool_id, ts, state in events:
+        if not ts:
+            continue
+        if tool_id not in latest or ts >= latest[tool_id][0]:
+            latest[tool_id] = (ts, state)
+    return {tool_id: state for tool_id, (_, state) in latest.items()}
