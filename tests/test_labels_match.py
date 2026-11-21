@@ -25,3 +25,9 @@ def test_empty_labels():
 
 def test_single_substitution():
     assert labels_match("abcdefghijklmnopqrstuvwxy", "abcdefghijklmnopqrstuvwxz") is False
+
+
+def test_large_labels():
+    a = "ab" * 25_000
+    assert labels_match(a, "ba" * 25_000) is True
+    assert labels_match(a, a[:-1] + "c") is False

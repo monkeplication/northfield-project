@@ -2,16 +2,23 @@ import heapq
 from collections import Counter, defaultdict
 
 
+def _letter_counts(text: str) -> tuple[int, ...]:
+    counts = [0] * 26
+    for ch in text:
+        counts[ord(ch) - ord("a")] += 1
+    return tuple(counts)
+
+
 def labels_match(a: str, b: str) -> bool:
     """Return True if b is a rearrangement of a."""
-    return len(a) == len(b) and sorted(a) == sorted(b)
+    return len(a) == len(b) and _letter_counts(a) == _letter_counts(b)
 
 
 def group_families(codes: list[str]) -> list[list[str]]:
     """Group part codes that are rearrangements of each other."""
-    families: dict[tuple[str, ...], list[str]] = defaultdict(list)
+    families: dict[tuple[int, ...], list[str]] = defaultdict(list)
     for code in codes:
-        families[tuple(sorted(code))].append(code)
+        families[_letter_counts(code)].append(code)
     return list(families.values())
 
 

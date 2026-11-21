@@ -22,3 +22,9 @@ def test_repeated_code_kept():
 
 def test_different_counts_separate():
     assert normalise(group_families(["aab", "abb", "bab"])) == [["aab"], ["abb", "bab"]]
+
+
+def test_large_batch():
+    codes = ["drill", "rildl", "socket", "ktesco"] * 2_500
+    groups = group_families(codes)
+    assert sorted(len(group) for group in groups) == [5_000, 5_000]
