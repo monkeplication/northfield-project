@@ -1,6 +1,15 @@
 from collections import Counter
 
-from fleet_findings import DATA, clean_events, fault_summary, load_events, usage_summary
+from fleet_findings import (
+    DATA,
+    clean_events,
+    energy_summary,
+    fault_summary,
+    load_events,
+    part_summary,
+    state_summary,
+    usage_summary,
+)
 
 
 def test_cleaning_counts():
@@ -47,3 +56,23 @@ def test_fault_top_k_includes_tie():
     assert faults["total"] == 26
     top_codes = [item["code"] for item in faults["codes"] if item["in_top_k"]]
     assert top_codes == [205, 101, 620, 518]
+
+
+def test_state_safety_and_stale_idle():
+    kept, _ = clean_events(load_events(DATA))
+    by_tool = {item["tool_id"]: item for item in state_summary(kept)}
+    safety_tools = {t for t, item in by_tool.items() if item["is_safety"]}
+    assert safety_tools == {"NT-103", "NT-110", "NT-111"}
+    assert by_tool["NT-106"]["state"] == "IDLE"
+    assert by_tool["NT-106"]["events_after"] == 9
+    assert by_tool["NT-106"]["sessions_after"] == 2
+
+
+def test_part_families_and_energy():
+    kept, _ = clean_events(load_events(DATA))
+    parts = part_summary(kept)
+    assert parts["total_scans"] == 64
+    assert len(parts["families"]) == 8
+
+    energy = {item["tool_id"]: item for item in energy_summary(kept)}
+    assert sum(item["zero_windows"] for item in energy.values()) == 4

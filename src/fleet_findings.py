@@ -2,11 +2,20 @@ import csv
 import sys
 from collections import Counter, defaultdict
 
-from solutions import merge_sessions, top_faults
+from solutions import (
+    count_windows,
+    group_families,
+    labels_match,
+    latest_state,
+    merge_sessions,
+    top_faults,
+)
 
 DATA = "data/northfield_fleet_events.csv"
 DAY = "2026-11-02"
 STATES = {"IDLE", "RUNNING", "OVERLOAD", "OVERHEATED", "LOW_BATTERY"}
+SAFETY_STATES = {"OVERLOAD", "OVERHEATED"}
+CATALOGUE = ["anchor", "brace", "chisel", "driver", "hammer", "rebar", "socket", "torque"]
 
 
 def load_events(path: str = DATA) -> list[dict[str, str]]:
@@ -82,6 +91,79 @@ def usage_summary(kept: list[dict[str, str]]) -> dict:
     return {"by_tool": by_tool, "totals": totals}
 
 
+def _minute_of_day(ts: str) -> int:
+    hours, minutes = ts[11:16].split(":")
+    return int(hours) * 60 + int(minutes)
+
+
+def state_summary(kept: list[dict[str, str]]) -> list[dict]:
+    events = [(row["tool_id"], row["timestamp"], row["state"]) for row in kept if row["state"]]
+    latest = latest_state(events)
+    state_time = {tool: max(ts for t, ts, _ in events if t == tool) for tool in latest}
+
+    results = []
+    for tool in sorted(latest):
+        tool_rows = [row for row in kept if row["tool_id"] == tool]
+        minute = _minute_of_day(state_time[tool])
+        events_after = [
+            row
+            for row in tool_rows
+            if row["timestamp"] > state_time[tool]
+            and ((row["net_energy"] and int(row["net_energy"]) != 0) or row["fault_code"])
+        ]
+        sessions_after = [
+            row for row in tool_rows if row["session_end_min"] and int(row["session_end_min"]) > minute
+        ]
+        results.append(
+            {
+                "tool_id": tool,
+                "state": latest[tool],
+                "time": state_time[tool][11:16],
+                "is_safety": latest[tool] in SAFETY_STATES,
+                "events_after": len(events_after),
+                "sessions_after": len(sessions_after),
+            }
+        )
+    return results
+
+
+def part_summary(kept: list[dict[str, str]]) -> dict:
+    labels = [row["part_label"] for row in kept if row["part_label"]]
+    families = []
+    for family in sorted(group_families(labels), key=len, reverse=True):
+        part = next((name for name in CATALOGUE if labels_match(name, family[0])), "unknown")
+        spellings = sorted(set(family))
+        families.append(
+            {
+                "part": part,
+                "scans": len(family),
+                "distinct_spellings": len(spellings),
+                "spellings": spellings,
+            }
+        )
+    return {
+        "total_scans": len(labels),
+        "distinct_labels": len(set(labels)),
+        "families": families,
+    }
+
+
+def energy_summary(kept: list[dict[str, str]]) -> list[dict]:
+    slots: dict[str, list[int]] = defaultdict(list)
+    for row in sorted(kept, key=lambda r: r["timestamp"]):
+        if row["net_energy"]:
+            slots[row["tool_id"]].append(int(row["net_energy"]))
+    return [
+        {
+            "tool_id": tool,
+            "slots": len(slots[tool]),
+            "net_energy": sum(slots[tool]),
+            "zero_windows": count_windows(slots[tool], 0),
+        }
+        for tool in sorted(slots)
+    ]
+
+
 def main(path: str = DATA) -> None:
     rows = load_events(path)
     kept, removed = clean_events(rows)
@@ -111,6 +193,26 @@ def main(path: str = DATA) -> None:
     for item in faults["codes"]:
         tag = " [top 3]" if item["in_top_k"] else ""
         print(f"  {item['code']}: {item['count']} ({item['share']:.0%}){tag}")
+
+    print("\nLatest tool states:")
+    for item in state_summary(kept):
+        flag = " [SAFETY]" if item["is_safety"] else ""
+        print(
+            f"  {item['tool_id']}: {item['state']:<11s} at {item['time']}{flag} "
+            f"(after: {item['events_after']} events, {item['sessions_after']} sessions)"
+        )
+
+    parts = part_summary(kept)
+    print(f"\nPart families ({parts['total_scans']} scans, {parts['distinct_labels']} spellings, {len(parts['families'])} families):")
+    for item in parts["families"]:
+        print(f"  {item['part']:<7s}: {item['scans']:2d} scans, {item['distinct_spellings']:2d} spellings")
+
+    print("\nEnergy windows (net=0):")
+    for item in energy_summary(kept):
+        print(
+            f"  {item['tool_id']}: {item['slots']} slots, net={item['net_energy']:2d}, "
+            f"zero_windows={item['zero_windows']}"
+        )
 
 
 if __name__ == "__main__":
