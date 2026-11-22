@@ -25,6 +25,14 @@ def test_missing_timestamp_ignored():
     assert latest_state(events) == {"NT-101": "RUNNING"}
 
 
+def test_whitespace_timestamp_ignored():
+    events = [
+        ("NT-101", "2026-11-02 09:00:00", "RUNNING"),
+        ("NT-101", "   ", "OVERLOAD"),
+    ]
+    assert latest_state(events) == {"NT-101": "RUNNING"}
+
+
 def test_calls_are_independent():
     first = latest_state([("NT-101", "2026-11-02 09:00:00", "RUNNING")])
     second = latest_state([("NT-102", "2026-11-02 10:00:00", "IDLE")])

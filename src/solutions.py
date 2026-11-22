@@ -55,7 +55,7 @@ def latest_state(events: list[tuple]) -> dict[str, str]:
     """Return each tool's most recent state (later arrival wins on equal timestamps)."""
     latest: dict[str, tuple[str, str]] = {}
     for tool_id, ts, state in events:
-        if not ts:
+        if not ts or not ts.strip():
             continue
         if tool_id not in latest or ts >= latest[tool_id][0]:
             latest[tool_id] = (ts, state)
