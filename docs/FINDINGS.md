@@ -30,7 +30,7 @@ Code: `src/fleet_findings.py`; full tables in the Excel workbook. Checks for bad
 | NT-111 | OVERHEATED | 09:23 | 7 energy/fault events |
 | NT-103 / NT-110 | OVERHEATED / OVERLOAD | 12:52 / 13:08 | 1 / 0 events |
 
-NT-106 and NT-112 look idle but kept working. NT-111 kept working after overheating: either a stale state or unsafe use.
+NT-106 and NT-112 look idle but kept working. NT-111 kept working after overheating: either a stale state or unsafe use. Counting NT-103's one later energy reading, 4 of 12 tools show a state that their own later activity contradicts.
 
 ## Finding 3: four fault codes cause 85% of faults
 
@@ -41,10 +41,12 @@ NT-106 and NT-112 look idle but kept working. NT-111 kept working after overheat
 | 620, 518 (tied) | 4 each | 15% each |
 | 310, 412 | 3, 1 | 12%, 4% |
 
-620 and 518 tie at the top-3 cut-off, so I include both instead of dropping one at random.
+620 and 518 tie at the top-3 cut-off. `top_faults` returns exactly 3 codes, so the report takes the count of the third code as the cut-off and shows every code at or above it.
 
 ## Recommendation
 
-**Deduplicate on `event_id` and merge overlapping sessions once, inside the cloud pipeline, before any dashboard or report reads the data.**
+**1. Flag tool states that the tool's own activity contradicts.** If a tool sends energy or fault events after reporting IDLE, show its state as "stale" instead of IDLE. If it keeps working after OVERHEATED or OVERLOAD, raise an alert to the site. This deals with tools that look idle while working.
 
-**Affects** finance, global operations and service centres. **Metric:** weekly "dashboard doesn't match site" reports from service centres, before vs after.
+**2. Clean the data once, in the cloud pipeline, before any dashboard reads it.** Drop resent events by `event_id`, merge overlapping sessions, and group part scans into families with `group_families`. This fixes the 21% usage overstatement and stops misprinted labels from landing in the wrong family.
+
+**Affects** site managers and service centres (states and safety), finance (usage) and global operations (parts). **Metric:** the number of tools each day whose state disagrees with their later activity. It is 4 of 12 on 2 November, and the goal is 0.

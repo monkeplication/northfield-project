@@ -61,3 +61,12 @@ def test_multiple_tools_mixed_order():
         "NT-104": "IDLE",
         "NT-105": "RUNNING",
     }
+
+
+def test_large_batch():
+    n = 100_000
+    events = [(f"NT-{i % 100}", f"2026-11-02 {i % 24:02d}:{i % 60:02d}:00", "RUNNING") for i in range(n)]
+    events.append(("NT-0", "2026-11-02 23:59:59", "IDLE"))
+    result = latest_state(events)
+    assert len(result) == 100
+    assert result["NT-0"] == "IDLE"

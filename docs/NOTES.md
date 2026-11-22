@@ -50,6 +50,6 @@ Timestamps are fixed-width and zero-padded, so comparing them as text gives the 
 - **Outside the reporting day (1 row, NT-105, dated 2026-11-09):** dropped. Its session 384–424 lies inside an existing NT-105 block, so merged minutes do not change either way.
 - **Validity checks:** whitespace is stripped and states, session order and numbers are checked. No rows failed.
 - **Session times:** taken as given, ignoring the upload timestamp. A session lasts `end - start` minutes. Some sessions run between 00:18 and 03:36, before any event timestamp; I kept them at face value.
-- **Activity:** a non-zero energy reading, a fault, or a session still running counts as activity. Zero energy and part scans do not.
-- **Part names:** the 8 unscrambled labels found in the data are taken as the catalogue.
+- **Activity:** a non-zero energy reading, a fault, or a session still running counts as activity. Zero energy and part scans do not: a scan shows a part was handled, not that the tool ran. A session counts if it ends after the state, even if it started before. Counting only sessions that start after the state changes NT-106 from 2 sessions to 1 and changes no other result.
+- **Part names:** each family is labelled with the one readable word already in the data. There are 8, and there is no separate catalogue.
 - **Ties:** fault codes tied at the top-k cut-off are all included. For state, the later-arriving event wins.

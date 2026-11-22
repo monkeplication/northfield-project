@@ -84,12 +84,11 @@ def build_word():
     section.left_margin = section.right_margin = section.top_margin = section.bottom_margin = Inches(0.75)
     doc.styles["Normal"].font.size = Pt(10)
     doc.add_heading(f"{NAME}: Northfield SDE Case Assessment", level=0)
-    doc.add_paragraph("Code, tests and README are in the accompanying repository. The full solutions are in the appendix.")
-    for name in ["NOTES.md", "FINDINGS.md"]:
+    doc.add_paragraph("Code, tests and README are in the accompanying repository.")
+    for i, name in enumerate(["NOTES.md", "FINDINGS.md"]):
+        if i:
+            doc.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
         add_markdown(doc, Path("docs", name).read_text())
-        doc.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
-    doc.add_heading("Appendix: src/solutions.py", level=1)
-    add_code(doc, Path("src/solutions.py").read_text())
     doc.save(OUT / f"{NAME}_Case Assessment.docx")
 
 
@@ -186,7 +185,7 @@ def build_excel():
     add_rows(
         book,
         "Latest state",
-        ["Tool", "Latest state", "At", "Safety state", "Energy or fault events after", "Sessions running after"],
+        ["Tool", "Latest state", "At", "Safety state", "Energy or fault events after", "Sessions running after", "State disagrees with activity"],
         [
             [
                 item["tool_id"],
@@ -195,6 +194,7 @@ def build_excel():
                 "yes" if item["is_safety"] else "no",
                 item["events_after"],
                 item["sessions_after"],
+                "yes" if item["state_mismatch"] else "no",
             ]
             for item in state_summary(kept)
         ],

@@ -68,6 +68,12 @@ def test_state_safety_and_stale_idle():
     assert by_tool["NT-106"]["sessions_after"] == 2
 
 
+def test_state_mismatch():
+    kept, _ = clean_events(load_events(DATA))
+    mismatched = {item["tool_id"] for item in state_summary(kept) if item["state_mismatch"]}
+    assert mismatched == {"NT-103", "NT-106", "NT-111", "NT-112"}
+
+
 def test_part_families_and_energy():
     kept, _ = clean_events(load_events(DATA))
     parts = part_summary(kept)

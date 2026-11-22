@@ -122,6 +122,8 @@ def state_summary(kept: list[dict[str, str]]) -> list[dict]:
                 "is_safety": latest[tool] in SAFETY_STATES,
                 "events_after": len(events_after),
                 "sessions_after": len(sessions_after),
+                "state_mismatch": (latest[tool] == "IDLE" or latest[tool] in SAFETY_STATES)
+                and bool(events_after or sessions_after),
             }
         )
     return results
@@ -195,12 +197,15 @@ def main(path: str = DATA) -> None:
         print(f"  {item['code']}: {item['count']} ({item['share']:.0%}){tag}")
 
     print("\nLatest tool states:")
-    for item in state_summary(kept):
+    states = state_summary(kept)
+    for item in states:
         flag = " [SAFETY]" if item["is_safety"] else ""
+        flag += " [MISMATCH]" if item["state_mismatch"] else ""
         print(
             f"  {item['tool_id']}: {item['state']:<11s} at {item['time']}{flag} "
             f"(after: {item['events_after']} events, {item['sessions_after']} sessions)"
         )
+    print(f"  State disagrees with later activity: {sum(item['state_mismatch'] for item in states)} of {len(states)} tools")
 
     parts = part_summary(kept)
     print(f"\nPart families ({parts['total_scans']} scans, {parts['distinct_labels']} spellings, {len(parts['families'])} families):")
